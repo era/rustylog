@@ -1,0 +1,57 @@
+config = _{ ignore ~ plugin_section ~ ignore ~ (plugin_section ~ ignore)* }
+comment = @{ whitespace? ~ "#" ~ (!"\n" ~ ANY)* ~ "\n" }
+ignore = _{ (comment | whitespace)* }
+whitespace = _{ " " | "\t" | "\r" | "\n" | " " }
+
+plugin_section = { plugin_type ~ ignore ~ "{" ~ ignore ~ (branch_or_plugin ~ ignore)* ~ "}" }
+branch_or_plugin = _{ branch | plugin }
+plugin_type = { "input" | "filter" | "output" }
+plugins = { (plugin ~ (ignore ~ plugin)*)? }
+
+plugin = { name ~ ignore ~ "{" ~ ignore ~ attribute* ~ ignore ~ "}" }
+name = @{ ASCII_ALPHANUMERIC+ | string }
+attribute = { name ~ ignore ~ "=>" ~ ignore ~ value ~ ignore }
+value = { plugin | bareword | string | number | array | hash }
+array_value = { bareword | string | number | array | hash }
+
+bareword = @{ ASCII_ALPHA+ }
+double_quoted_string = { "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+single_quoted_string = { "'" ~ (!"'" ~ ANY)* ~ "'" }
+string = { double_quoted_string | single_quoted_string }
+regexp = { "/" ~ (!"/" ~ ANY)* ~ "/" }
+number = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? }
+
+array = { "[" ~ ignore ~ (value ~ (ignore ~ "," ~ ignore ~ value)*)? ~ ignore ~ "]" }
+hash = { "{" ~ ignore ~ hashentries? ~ ignore ~ "}" }
+hashentries = { hashentry ~ (whitespace ~ hashentry)* }
+hashentry = { (number | bareword | string) ~ ignore ~ "=>" ~ ignore ~ value }
+
+branch = { if_clause ~ (else_if_clause)* ~ (else_clause)? }
+if_clause = { "if" ~ ignore ~ condition ~ ignore ~ "{" ~ ignore ~ (branch_or_plugin ~ ignore)* ~ "}" }
+else_if_clause = { "else" ~ ignore ~ "if" ~ ignore ~ condition ~ ignore ~ "{" ~ ignore ~ (branch_or_plugin ~ ignore)* ~ "}" }
+else_clause = { "else" ~ ignore ~ "{" ~ ignore ~ (branch_or_plugin ~ ignore)* ~ "}" }
+
+condition = { expression ~ (boolean_operator ~ expression)* }
+expression = {
+    ("(" ~ ignore ~ condition ~ ignore ~ ")")
+    | negative_expression
+    | in_expression
+    | not_in_expression
+    | compare_expression
+    | regexp_expression
+    | rvalue
+}
+negative_expression = { "!" ~ ignore ~ "(" ~ ignore ~ condition ~ ignore ~ ")" | "!" ~ ignore ~ selector }
+in_expression = { rvalue ~ ignore ~ "in" ~ ignore ~ rvalue }
+not_in_expression = { rvalue ~ ignore ~ "not" ~ ignore ~ "in" ~ ignore ~ rvalue }
+rvalue = { string | number | selector | array | method_call | regexp }
+method_call = { method ~ ignore ~ "(" ~ (rvalue ~ (ignore ~ "," ~ ignore ~ rvalue)*)? ~ ")" }
+method = { bareword }
+compare_expression = { rvalue ~ ignore ~ compare_operator ~ ignore ~ rvalue }
+compare_operator = { "==" | "!=" | "<=" | ">=" | "<" | ">" }
+regexp_expression = { rvalue ~ ignore ~ regexp_operator ~ ignore ~ (string | regexp) }
+regexp_operator = { "=~" | "!~" }
+boolean_operator = { "and" | "or" | "xor" | "nand" }
+
+selector = { selector_element+ }
+selector_element = { "[" ~ (!"]" ~ ANY)+ ~ "]" }
