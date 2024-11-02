@@ -13,18 +13,19 @@ struct LogStashConfigParser;
 #[non_exhaustive]
 pub enum ConfigParseError {
     #[error("PEST parsing error: {0}")]
-    PestError(#[from] pest::error::Error<Rule>),
+    PestError(String),
 
     #[error("Unexpected parsing structure encountered")]
     UnexpectedStructure,
 }
 
-fn parse_logstash_config(input: &str) -> Result<Vec<PluginSection>, ConfigParseError> {
+pub fn parse_logstash_config(input: &str) -> Result<Vec<PluginSection>, ConfigParseError> {
     if input.is_empty() {
         return Ok(Vec::new());
     }
 
-    let pairs = LogStashConfigParser::parse(Rule::config, input)?; // Entry rule is `config`
+    let pairs = LogStashConfigParser::parse(Rule::config, input)
+        .map_err(|e| ConfigParseError::PestError(e.to_string()))?; // Entry rule is `config`
     let mut sections = Vec::new();
 
     for pair in pairs {
