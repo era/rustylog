@@ -1,4 +1,4 @@
-mod language;
+pub mod language;
 
 #[derive(Debug, PartialEq)]
 pub enum PluginType {
