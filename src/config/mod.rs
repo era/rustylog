@@ -9,8 +9,8 @@ pub enum PluginType {
 
 #[derive(Debug, PartialEq)]
 pub struct Plugin {
-    name: String,
-    attributes: Vec<(String, AttributeValue)>,
+    pub name: String,
+    pub attributes: Vec<(String, AttributeValue)>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -23,6 +23,6 @@ pub enum AttributeValue {
 
 #[derive(Debug, PartialEq)]
 pub struct PluginSection {
-    plugin_type: PluginType,
-    plugins: Vec<Plugin>,
+    pub plugin_type: PluginType,
+    pub plugins: Vec<Plugin>,
 }
