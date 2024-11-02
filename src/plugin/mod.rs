@@ -1,26 +1,13 @@
-use std::{fmt::Display, fs::read_to_string, path::PathBuf};
+pub mod error;
+pub mod input;
 
-use thiserror::Error;
+use std::{fs::read_to_string, path::PathBuf};
 
-use crate::config::{
-    self, language::ConfigParseError, AttributeValue, Plugin, PluginSection, PluginType,
-};
+use error::ApplicationError;
+use input::InputPlugin;
 
-#[derive(Debug, Error)]
-#[non_exhaustive]
-pub enum ApplicationError {
-    #[error("Configuration Error: {0}")]
-    ConfigError(#[from] ConfigParseError),
+use crate::config::{self, Plugin, PluginType};
 
-    #[error("IO Error: {0}")]
-    IoError(#[from] std::io::Error),
-}
-
-trait InputPlugin {
-    fn init(&mut self, config: Vec<(String, config::AttributeValue)>) -> Result<(), ()>;
-    fn commit(&mut self) -> Result<(), ()>;
-    fn produce(&mut self) -> Result<(), ()>; // TODO probably use a channel here
-}
 trait FilterPlugin {}
 trait OutputPlugin {}
 
@@ -38,7 +25,7 @@ pub fn from_config(config: PathBuf) -> Result<Application, ApplicationError> {
     let config = config::language::parse_logstash_config(&config)?;
     for item in config {
         match item.plugin_type {
-            PluginType::Input => app.input = input_plugins(item.plugins)?,
+            PluginType::Input => app.input = input::from_config(item.plugins)?,
             PluginType::Output => app.output = output_plugins(item.plugins)?,
             PluginType::Filter => app.filters = filter_plugins(item.plugins)?,
         };
@@ -51,16 +38,5 @@ fn filter_plugins(plugins: Vec<Plugin>) -> Result<Vec<Box<dyn FilterPlugin>>, Ap
 }
 
 fn output_plugins(plugins: Vec<Plugin>) -> Result<Vec<Box<dyn OutputPlugin>>, ApplicationError> {
-    todo!()
-}
-
-fn input_plugins(plugins: Vec<Plugin>) -> Result<Vec<Box<dyn InputPlugin>>, ApplicationError> {
-    todo!()
-}
-
-fn find_input_plugin(
-    name: String,
-    attributes: Vec<(String, AttributeValue)>,
-) -> Result<Box<dyn InputPlugin>, ApplicationError> {
     todo!()
 }
