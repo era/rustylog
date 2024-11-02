@@ -3,37 +3,14 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
+use super::{AttributeValue, Plugin, PluginSection, PluginType};
+
 #[derive(Parser)]
 #[grammar = "pest/logstash_config.pest"]
 struct LogStashConfigParser;
 
-#[derive(Debug, PartialEq)]
-enum PluginType {
-    Input,
-    Filter,
-    Output,
-}
-
-#[derive(Debug, PartialEq)]
-struct Plugin {
-    name: String,
-    attributes: Vec<(String, AttributeValue)>,
-}
-
-#[derive(Debug, PartialEq)]
-enum AttributeValue {
-    String(String),
-    Regexp(String),
-    Number(String),
-}
-
-#[derive(Debug, PartialEq)]
-struct PluginSection {
-    plugin_type: PluginType,
-    plugins: Vec<Plugin>,
-}
-
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum ConfigParseError {
     #[error("PEST parsing error: {0}")]
     PestError(#[from] pest::error::Error<Rule>),
