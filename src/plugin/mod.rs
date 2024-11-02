@@ -2,6 +2,7 @@ pub mod error;
 pub mod input;
 
 use std::{fs::read_to_string, path::PathBuf};
+use tokio::runtime::Runtime;
 
 use error::ApplicationError;
 use input::InputPlugin;
@@ -39,4 +40,8 @@ fn filter_plugins(plugins: Vec<Plugin>) -> Result<Vec<Box<dyn FilterPlugin>>, Ap
 
 fn output_plugins(plugins: Vec<Plugin>) -> Result<Vec<Box<dyn OutputPlugin>>, ApplicationError> {
     todo!()
+}
+
+pub struct Context {
+    pub runtime: Runtime,
 }
