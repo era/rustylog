@@ -18,6 +18,8 @@ pub enum ApplicationError {
 
 trait InputPlugin {
     fn init(&mut self, config: Vec<(String, config::AttributeValue)>) -> Result<(), ()>;
+    fn commit(&mut self) -> Result<(), ()>;
+    fn produce(&mut self) -> Result<(), ()>; // TODO probably use a channel here
 }
 trait FilterPlugin {}
 trait OutputPlugin {}
