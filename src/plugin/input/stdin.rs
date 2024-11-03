@@ -37,8 +37,8 @@ impl InputPlugin for StdinPlugin {
                                 println!("Read line: {}", line);
                             }
                             Ok(None) => {
-                                println!("End of input");
-                                break;
+                                // ignore if someone sends EOF
+                                continue;
                             }
                             Err(e) => {
                                 eprintln!("Error reading line: {}", e);
