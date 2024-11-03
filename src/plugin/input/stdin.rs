@@ -6,7 +6,7 @@ use tokio::sync::{broadcast, oneshot};
 /// StdinPlugin reads from the stdin and sends messages to the filters.
 /// StdinPlugin does not try to resend messages in case something goes wrong,
 /// and does not keep track of which messages were send or not. Clients writing to
-/// stdin should retry the operation in case of failures. In order words, if the process
+/// stdin should retry the operation in case of failures. In other words, if the process
 /// restarts, there could be data loss.
 pub struct StdinPlugin {
     shutdown: Option<oneshot::Sender<()>>,
