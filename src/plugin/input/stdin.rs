@@ -38,7 +38,7 @@ impl InputPlugin for StdinPlugin {
                     line = lines.next_line() => {
                         match line {
                             Ok(Some(line)) => {
-                                tx.send(line).context("err while trying to send message");
+                                tx.send(line).expect("err while trying to send message");
                             }
                             Ok(None) => {
                                 // ignore if someone sends EOF
