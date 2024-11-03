@@ -5,6 +5,7 @@ use super::{
     Context,
 };
 use crate::config::{self, AttributeValue, Plugin};
+use tokio::sync::broadcast;
 
 /// InputPlugin receives messages and send them to the filters.
 pub trait InputPlugin {
@@ -21,7 +22,7 @@ pub trait InputPlugin {
     /// the process restarts, we know at which point should we retry operations.
     fn commit(&mut self, context: Context) -> Result<(), PluginError>;
     /// Return a `Producer` so filter can consume the inputs.
-    fn producer(&mut self, context: Context) -> Result<(), PluginError>; // TODO probably use a channel here
+    fn subscribe(&mut self, context: Context) -> Result<broadcast::Receiver<String>, PluginError>;
     /// gracefully shutdown the plugin
     fn shutdown(&mut self, context: Context) -> Result<(), PluginError>;
 }
