@@ -1,48 +1,47 @@
 use crate::config::{self, AttributeValue, Plugin};
 use crate::plugin::{input::PluginError, Context, InputPlugin};
-use tokio::io::{self, AsyncBufReadExt, BufReader};
+use std::collections::HashMap;
+use tokio::io::{self, AsyncBufReadExt, AsyncRead, BufReader, Lines, Stdin};
 use tokio::sync::{broadcast, oneshot};
 
-/// StdinPlugin reads from the stdin and sends messages to the filters.
-/// StdinPlugin does not try to resend messages in case something goes wrong,
-/// and does not keep track of which messages were send or not. Clients writing to
-/// stdin should retry the operation in case of failures. In other words, if the process
-/// restarts, there could be data loss.
-pub struct StdinPlugin {
+#[derive(Default)]
+pub struct ReaderPlugin<R: AsyncRead + Unpin + Send + 'static> {
     shutdown: Option<oneshot::Sender<()>>,
-    sender: broadcast::Sender<String>,
+    sender: Option<broadcast::Sender<String>>,
+    reader: Option<Lines<BufReader<R>>>,
 }
 
-impl InputPlugin for StdinPlugin {
+impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
     fn init(
         &mut self,
         context: Context,
-        _config: Vec<(String, config::AttributeValue)>,
-    ) -> Result<Self, PluginError> {
+        _: HashMap<String, config::AttributeValue>,
+    ) -> Result<(), PluginError> {
         let (cancel_tx, mut cancel_rx) = oneshot::channel::<()>();
         //TODO make the capacity configurable
-        let (tx, mut rx1) = broadcast::channel(100);
+        let (tx, rx1) = broadcast::channel(100);
         // we will generate consumers with the subscriber method
         drop(rx1);
-        let plugin = StdinPlugin {
-            shutdown: Some(cancel_tx),
-            sender: tx.clone(),
-        };
+
+        self.shutdown = Some(cancel_tx);
+        self.sender = Some(tx.clone());
+
+        //TODO return error instead of panic
+        let mut line_reader = self
+            .reader
+            .take()
+            .expect("should initialize with a lines reader");
 
         context.runtime.spawn(async move {
-            let stdin = io::stdin();
-            let reader = BufReader::new(stdin);
-            let mut lines = reader.lines();
             loop {
                 tokio::select! {
-                    line = lines.next_line() => {
+                    line = line_reader.next_line() => {
                         match line {
                             Ok(Some(line)) => {
                                 tx.send(line).expect("err while trying to send message");
                             }
                             Ok(None) => {
-                                // ignore if someone sends EOF
-                                continue;
+                                break;
                             }
                             Err(e) => {
                                 eprintln!("Error reading line: {}", e);
@@ -58,7 +57,7 @@ impl InputPlugin for StdinPlugin {
             }
         });
 
-        Ok(plugin)
+        Ok(())
     }
 
     /// commit does not do anything as we do not store what was send before
@@ -67,8 +66,12 @@ impl InputPlugin for StdinPlugin {
         Ok(())
     }
 
-    fn subscribe(&mut self, context: Context) -> Result<broadcast::Receiver<String>, PluginError> {
-        Ok(self.sender.subscribe())
+    fn subscribe(&mut self, _: Context) -> Result<broadcast::Receiver<String>, PluginError> {
+        Ok(self
+            .sender
+            .as_ref()
+            .expect("can only call subscribe in a initiated plugin")
+            .subscribe())
     }
 
     fn shutdown(&mut self, _: Context) -> Result<(), PluginError> {
@@ -76,5 +79,58 @@ impl InputPlugin for StdinPlugin {
         // stop the operation. So nothing to do here.
         self.shutdown.take().and_then(|c| Some(c.send(())));
         Ok(())
+    }
+}
+
+/// StdinPlugin reads from the stdin and sends messages to the filters.
+/// StdinPlugin does not try to resend messages in case something goes wrong,
+/// and does not keep track of which messages were send or not. Clients writing to
+/// stdin should retry the operation in case of failures. In other words, if the process
+/// restarts, there could be data loss.
+type StdinPlugin = ReaderPlugin<Stdin>;
+
+impl StdinPlugin {
+    fn default() -> Self {
+        let stdin = io::stdin();
+        let reader = BufReader::new(stdin);
+        let lines = reader.lines();
+        let plugin = Self {
+            shutdown: None,
+            sender: None,
+            reader: Some(lines),
+        };
+        plugin
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_outputs_from_stdin() {
+        let ctx = Context::new();
+
+        let data = "This is a test\nWith multiple lines\n".as_bytes();
+
+        let cursor = Cursor::new(data);
+        let reader = BufReader::new(cursor);
+        let lines = reader.lines();
+
+        let mut plugin = ReaderPlugin {
+            shutdown: None,
+            sender: None,
+            reader: Some(lines),
+        };
+        plugin.init(ctx.clone(), HashMap::new()).unwrap();
+
+        let mut sub = plugin.subscribe(ctx.clone()).unwrap();
+
+        assert_eq!("This is a test", sub.recv().await.unwrap());
+        assert_eq!("With multiple lines", sub.recv().await.unwrap());
+
+        plugin.shutdown(ctx.clone()).unwrap();
     }
 }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 pub mod language;
 
 #[derive(Debug, PartialEq)]
@@ -10,7 +12,7 @@ pub enum PluginType {
 #[derive(Debug, PartialEq)]
 pub struct Plugin {
     pub name: String,
-    pub attributes: Vec<(String, AttributeValue)>,
+    pub attributes: HashMap<String, AttributeValue>,
 }
 
 #[derive(Debug, PartialEq)]

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use pest_derive::Parser;
@@ -68,7 +70,7 @@ fn parse_plugin_section(pairs: Pairs<Rule>) -> Result<PluginSection, ConfigParse
 
 fn parse_plugin(pairs: Pairs<Rule>) -> Plugin {
     let mut name = String::new();
-    let mut attributes = Vec::new();
+    let mut attributes = HashMap::new();
 
     for pair in pairs {
         match pair.as_rule() {
@@ -79,7 +81,7 @@ fn parse_plugin(pairs: Pairs<Rule>) -> Plugin {
                 let mut inner = pair.into_inner();
                 let attr_name = inner.next().unwrap().as_str().to_owned();
                 let attr_value = parse_value(inner.next().unwrap().into_inner().next().unwrap());
-                attributes.push((attr_name, attr_value));
+                attributes.insert(attr_name, attr_value);
             }
             _ => unreachable!(),
         }
@@ -129,7 +131,9 @@ mod tests {
                         "codec".to_string(),
                         AttributeValue::String("json".to_string()),
                     ),
-                ],
+                ]
+                .into_iter()
+                .collect(),
             }],
         }];
 
@@ -167,7 +171,9 @@ mod tests {
                             "codec".to_string(),
                             AttributeValue::String("json".to_string()),
                         ),
-                    ],
+                    ]
+                    .into_iter()
+                    .collect(),
                 }],
             },
             PluginSection {
@@ -177,7 +183,9 @@ mod tests {
                     attributes: vec![(
                         "codec".to_string(),
                         AttributeValue::String("rubydebug".to_string()),
-                    )],
+                    )]
+                    .into_iter()
+                    .collect(),
                 }],
             },
         ];

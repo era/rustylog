@@ -2,7 +2,7 @@ pub mod error;
 pub mod input;
 
 use std::{fs::read_to_string, path::PathBuf};
-use tokio::runtime::Runtime;
+use tokio::runtime::Handle;
 
 use error::ApplicationError;
 use input::InputPlugin;
@@ -42,6 +42,14 @@ fn output_plugins(plugins: Vec<Plugin>) -> Result<Vec<Box<dyn OutputPlugin>>, Ap
     todo!()
 }
 
+#[derive(Clone)]
 pub struct Context {
-    pub runtime: Runtime,
+    pub runtime: Handle,
+}
+
+impl Context {
+    fn new() -> Self {
+        let runtime = Handle::current();
+        Self { runtime }
+    }
 }

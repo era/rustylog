@@ -1,5 +1,7 @@
 mod stdin;
 
+use std::collections::HashMap;
+
 use super::{
     error::{ApplicationError, PluginError},
     Context,
@@ -14,8 +16,8 @@ pub trait InputPlugin {
     fn init(
         &mut self,
         context: Context,
-        config: Vec<(String, config::AttributeValue)>,
-    ) -> Result<Self, PluginError>
+        config: HashMap<String, config::AttributeValue>,
+    ) -> Result<(), PluginError>
     where
         Self: Sized;
     /// After the output, we need to `commit` the offset we already handled. So that if
