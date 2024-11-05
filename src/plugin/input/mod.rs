@@ -1,4 +1,4 @@
-mod stdin;
+mod reader;
 
 use std::collections::HashMap;
 
