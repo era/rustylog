@@ -12,25 +12,27 @@ pub struct ReaderPlugin<R: AsyncRead + Unpin + Send + 'static> {
 }
 
 impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
-    fn init(
+    /// start must be called with a reader in place, otherwise it will return 
+    /// `Err(PluginError::NotInitialized)`.
+    fn start(
         &mut self,
         context: Context,
         _: HashMap<String, config::AttributeValue>,
-    ) -> Result<(), PluginError> {
+    ) -> Result<broadcast::Receiver<String>, PluginError> {
         let (cancel_tx, mut cancel_rx) = oneshot::channel::<()>();
         //TODO make the capacity configurable
         let (tx, rx1) = broadcast::channel(100);
-        // we will generate consumers with the subscriber method
-        drop(rx1);
 
         self.shutdown = Some(cancel_tx);
         self.sender = Some(tx.clone());
 
-        //TODO return error instead of panic
-        let mut line_reader = self
-            .reader
-            .take()
-            .expect("should initialize with a lines reader");
+        let mut line_reader = if let Some(reader) = self.reader.take() {
+            reader
+        } else {
+            return Err(PluginError::NotInitialized(
+                "must initialize reader before calling start".to_owned(),
+            ));
+        };
 
         context.runtime.spawn(async move {
             loop {
@@ -57,7 +59,7 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
             }
         });
 
-        Ok(())
+        Ok(rx1)
     }
 
     /// commit does not do anything as we do not store what was send before
@@ -124,9 +126,7 @@ mod tests {
             sender: None,
             reader: Some(lines),
         };
-        plugin.init(ctx.clone(), HashMap::new()).unwrap();
-
-        let mut sub = plugin.subscribe(ctx.clone()).unwrap();
+        let mut sub = plugin.start(ctx.clone(), HashMap::new()).unwrap();
 
         assert_eq!("This is a test", sub.recv().await.unwrap());
         assert_eq!("With multiple lines", sub.recv().await.unwrap());

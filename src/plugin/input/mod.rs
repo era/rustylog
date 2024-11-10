@@ -13,11 +13,11 @@ use tokio::sync::broadcast;
 pub trait InputPlugin {
     /// Called when the processes is starting, useful for plugins that receives input
     /// from TCP port, for example.
-    fn init(
+    fn start(
         &mut self,
         context: Context,
         config: HashMap<String, config::AttributeValue>,
-    ) -> Result<(), PluginError>
+    ) -> Result<broadcast::Receiver<String>, PluginError>
     where
         Self: Sized;
     /// After the output, we need to `commit` the offset we already handled. So that if

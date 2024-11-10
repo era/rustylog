@@ -14,4 +14,7 @@ pub enum ApplicationError {
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub enum PluginError {}
+pub enum PluginError {
+    #[error("Plugin was not correctly initialized: {0}")]
+    NotInitialized(String),
+}
