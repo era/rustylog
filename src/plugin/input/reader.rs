@@ -12,7 +12,7 @@ pub struct ReaderPlugin<R: AsyncRead + Unpin + Send + 'static> {
 }
 
 impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
-    /// start must be called with a reader in place, otherwise it will return 
+    /// start must be called with a reader in place, otherwise it will return
     /// `Err(PluginError::NotInitialized)`.
     fn start(
         &mut self,
@@ -89,10 +89,10 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
 /// and does not keep track of which messages were send or not. Clients writing to
 /// stdin should retry the operation in case of failures. In other words, if the process
 /// restarts, there could be data loss.
-type StdinPlugin = ReaderPlugin<Stdin>;
+pub type StdinPlugin = ReaderPlugin<Stdin>;
 
 impl StdinPlugin {
-    fn default() -> Self {
+    pub fn default() -> Self {
         let stdin = io::stdin();
         let reader = BufReader::new(stdin);
         let lines = reader.lines();

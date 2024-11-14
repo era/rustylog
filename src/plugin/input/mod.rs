@@ -1,4 +1,4 @@
-mod reader;
+pub mod reader;
 
 use std::collections::HashMap;
 
@@ -6,7 +6,7 @@ use super::{
     error::{ApplicationError, PluginError},
     Context,
 };
-use crate::config::{self, AttributeValue, Plugin};
+use crate::config::{self, Plugin};
 use tokio::sync::broadcast;
 
 /// InputPlugin receives messages and send them to the filters.
@@ -30,12 +30,15 @@ pub trait InputPlugin {
 }
 
 pub fn from_config(plugins: Vec<Plugin>) -> Result<Vec<Box<dyn InputPlugin>>, ApplicationError> {
-    todo!()
-}
+    let mut input_plugins: Vec<Box<dyn InputPlugin>> = vec![];
+    for plugin in plugins {
+        let input = match plugin.name.as_str() {
+            "stdin" => reader::StdinPlugin::default(),
+            name @ _ => return Err(ApplicationError::PluginNotFound(name.to_string())),
+        };
 
-fn find_input_plugin(
-    name: String,
-    attributes: Vec<(String, AttributeValue)>,
-) -> Result<Box<dyn InputPlugin>, ApplicationError> {
-    todo!()
+        input_plugins.push(Box::new(input));
+    }
+
+    Ok(input_plugins)
 }

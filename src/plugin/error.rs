@@ -8,6 +8,9 @@ pub enum ApplicationError {
     #[error("Configuration Error: {0}")]
     ConfigError(#[from] ConfigParseError),
 
+    #[error("Plugin not found: {0}")]
+    PluginNotFound(String),
+
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
 }
