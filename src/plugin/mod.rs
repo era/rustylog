@@ -19,6 +19,12 @@ pub struct Application {
     output: Vec<Box<dyn OutputPlugin>>,
 }
 
+impl Application {
+    pub async fn start(self, handle: Handle) -> Result<(), ApplicationError> {
+        todo!()
+    }
+}
+
 pub fn from_config(config: PathBuf) -> Result<Application, ApplicationError> {
     let mut app = Application::default();
 

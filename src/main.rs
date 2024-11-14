@@ -2,6 +2,7 @@ mod config;
 mod plugin;
 
 use std::path::PathBuf;
+use tokio::runtime::Handle;
 
 use clap::Parser;
 
@@ -13,8 +14,9 @@ struct Cli {
     config: PathBuf,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
-    plugin::from_config(cli.config).unwrap();
-    println!("Hello, world!");
+    let app = plugin::from_config(cli.config).unwrap();
+    app.start(Handle::current()).await.unwrap();
 }
