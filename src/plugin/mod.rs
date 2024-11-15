@@ -74,3 +74,9 @@ impl Context {
         Self { runtime }
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct Payload {
+    pub id: String,
+    pub data: String,
+}

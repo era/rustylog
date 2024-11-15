@@ -1,20 +1,38 @@
-use crate::config::{self, AttributeValue, Plugin};
+use crate::config;
+use crate::plugin::Payload;
 use crate::plugin::{input::PluginError, Context, InputPlugin};
 use std::collections::HashMap;
 use tokio::io::{self, AsyncBufReadExt, AsyncRead, BufReader, Lines, Stdin};
 use tokio::sync::{broadcast, oneshot};
 
+#[derive(Debug)]
+struct IdGen {
+    count: u64,
+    name: String,
+}
+
+impl IdGen {
+    fn new(name: String) -> Self {
+        Self { count: 0, name }
+    }
+
+    fn next(&mut self) -> String {
+        self.count += 1;
+        format!("{}-{}", self.name, self.count)
+    }
+}
+
 pub struct ReaderPlugin<R: AsyncRead + Unpin + Send + 'static> {
     config: HashMap<String, config::AttributeValue>,
     shutdown: Option<oneshot::Sender<()>>,
-    sender: Option<broadcast::Sender<String>>,
+    sender: Option<broadcast::Sender<Payload>>,
     reader: Option<Lines<BufReader<R>>>,
 }
 
 impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
     /// start must be called with a reader in place, otherwise it will return
     /// `Err(PluginError::NotInitialized)`.
-    fn start(&mut self, context: Context) -> Result<broadcast::Receiver<String>, PluginError> {
+    fn start(&mut self, context: Context) -> Result<broadcast::Receiver<Payload>, PluginError> {
         let (cancel_tx, mut cancel_rx) = oneshot::channel::<()>();
         //TODO make the capacity configurable
         let (tx, rx1) = broadcast::channel(100);
@@ -30,13 +48,19 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
             ));
         };
 
+        //TODO name should be configurable
+        let mut id_gen = IdGen::new("todo".to_string());
+
         context.runtime.spawn(async move {
             loop {
                 tokio::select! {
                     line = line_reader.next_line() => {
                         match line {
-                            Ok(Some(line)) => {
-                                tx.send(line).expect("err while trying to send message");
+                            Ok(Some(data)) => {
+                                tx.send(Payload {
+                                    id: id_gen.next(),
+                                    data,
+                            }).expect("err while trying to send message");
                             }
                             Ok(None) => {
                                 break;
@@ -64,7 +88,7 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
         Ok(())
     }
 
-    fn subscribe(&mut self, _: Context) -> Result<broadcast::Receiver<String>, PluginError> {
+    fn subscribe(&mut self, _: Context) -> Result<broadcast::Receiver<Payload>, PluginError> {
         Ok(self
             .sender
             .as_ref()
@@ -126,8 +150,8 @@ mod tests {
         };
         let mut sub = plugin.start(ctx.clone()).unwrap();
 
-        assert_eq!("This is a test", sub.recv().await.unwrap());
-        assert_eq!("With multiple lines", sub.recv().await.unwrap());
+        assert_eq!("This is a test", sub.recv().await.unwrap().data);
+        assert_eq!("With multiple lines", sub.recv().await.unwrap().data);
 
         plugin.shutdown(ctx.clone()).unwrap();
     }
