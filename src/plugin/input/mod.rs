@@ -1,7 +1,5 @@
 pub mod reader;
 
-use std::collections::HashMap;
-
 use super::{
     error::{ApplicationError, PluginError},
     Context,
