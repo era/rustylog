@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use tokio::io::{self, AsyncBufReadExt, AsyncRead, BufReader, Lines, Stdin};
 use tokio::sync::{broadcast, oneshot};
 
-#[derive(Default)]
 pub struct ReaderPlugin<R: AsyncRead + Unpin + Send + 'static> {
+    config: HashMap<String, config::AttributeValue>,
     shutdown: Option<oneshot::Sender<()>>,
     sender: Option<broadcast::Sender<String>>,
     reader: Option<Lines<BufReader<R>>>,
@@ -14,11 +14,7 @@ pub struct ReaderPlugin<R: AsyncRead + Unpin + Send + 'static> {
 impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
     /// start must be called with a reader in place, otherwise it will return
     /// `Err(PluginError::NotInitialized)`.
-    fn start(
-        &mut self,
-        context: Context,
-        _: HashMap<String, config::AttributeValue>,
-    ) -> Result<broadcast::Receiver<String>, PluginError> {
+    fn start(&mut self, context: Context) -> Result<broadcast::Receiver<String>, PluginError> {
         let (cancel_tx, mut cancel_rx) = oneshot::channel::<()>();
         //TODO make the capacity configurable
         let (tx, rx1) = broadcast::channel(100);
@@ -92,11 +88,12 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
 pub type StdinPlugin = ReaderPlugin<Stdin>;
 
 impl StdinPlugin {
-    pub fn default() -> Self {
+    pub fn new(config: HashMap<String, config::AttributeValue>) -> Self {
         let stdin = io::stdin();
         let reader = BufReader::new(stdin);
         let lines = reader.lines();
         let plugin = Self {
+            config,
             shutdown: None,
             sender: None,
             reader: Some(lines),
@@ -122,11 +119,12 @@ mod tests {
         let lines = reader.lines();
 
         let mut plugin = ReaderPlugin {
+            config: HashMap::new(),
             shutdown: None,
             sender: None,
             reader: Some(lines),
         };
-        let mut sub = plugin.start(ctx.clone(), HashMap::new()).unwrap();
+        let mut sub = plugin.start(ctx.clone()).unwrap();
 
         assert_eq!("This is a test", sub.recv().await.unwrap());
         assert_eq!("With multiple lines", sub.recv().await.unwrap());

@@ -20,8 +20,23 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn start(self, handle: Handle) -> Result<(), ApplicationError> {
-        todo!()
+    pub async fn start(mut self, handle: Handle) -> Result<(), ApplicationError> {
+        let ctx = Context { runtime: handle };
+
+        Application::run_input(ctx, &mut self.input)?;
+
+        Ok(())
+    }
+
+    fn run_input(
+        ctx: Context,
+        plugins: &mut Vec<Box<dyn InputPlugin>>,
+    ) -> Result<(), ApplicationError> {
+        for plugin in plugins {
+            plugin.start(ctx.clone())?;
+        }
+
+        Ok(())
     }
 }
 

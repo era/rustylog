@@ -11,6 +11,9 @@ pub enum ApplicationError {
     #[error("Plugin not found: {0}")]
     PluginNotFound(String),
 
+    #[error("Error on Plugin: {0}")]
+    PluginError(#[from] PluginError),
+
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
 }
