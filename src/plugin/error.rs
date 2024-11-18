@@ -24,3 +24,10 @@ pub enum PluginError {
     #[error("Plugin was not correctly initialized: {0}")]
     NotInitialized(String),
 }
+
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum ProcessError {
+    #[error("Error while performing IO: {0}")]
+    IoError(#[from] std::io::Error),
+}
