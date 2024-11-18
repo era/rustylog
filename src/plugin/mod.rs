@@ -21,7 +21,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn start(mut self, handle: Handle) -> Result<(), ApplicationError> {
+    pub async fn start(&mut self, handle: Handle) -> Result<(), ApplicationError> {
         let ctx = Context { runtime: handle };
 
         Application::run_input(ctx, &mut self.input)?;
@@ -38,6 +38,12 @@ impl Application {
         }
 
         Ok(())
+    }
+
+    // starts a loop to processes all inputs sending them 
+    // to the output plugins
+    fn process(mut self) {
+        todo!()
     }
 }
 

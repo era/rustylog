@@ -19,4 +19,6 @@ async fn main() {
     let cli = Cli::parse();
     let app = plugin::from_config(cli.config).unwrap();
     app.start(Handle::current()).await.unwrap();
+    
+    app.process().unwrap();
 }
