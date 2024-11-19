@@ -40,9 +40,9 @@ impl Application {
         Ok(())
     }
 
-    // starts a loop to processes all inputs sending them 
+    // starts a loop to processes all inputs sending them
     // to the output plugins
-    fn process(mut self) {
+    pub fn process(mut self) -> Result<(), ApplicationError> {
         todo!()
     }
 }
