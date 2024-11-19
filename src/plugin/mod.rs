@@ -5,7 +5,7 @@ pub mod output;
 use futures::stream::{select_all, StreamExt};
 use output::OutputPlugin;
 use std::{collections::HashMap, fs::read_to_string, path::PathBuf};
-use tokio::{runtime::Handle, sync::broadcast, task::JoinSet};
+use tokio::runtime::Handle;
 
 use error::ApplicationError;
 use input::InputPlugin;
