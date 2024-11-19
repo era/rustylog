@@ -105,6 +105,8 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
     }
 
     fn identifier(&self) -> String {
+        //FIXME should not hardcode this here
+        // since this is generic over the reader type
         "Stdin".to_string()
     }
 }
