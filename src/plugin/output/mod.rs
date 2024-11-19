@@ -14,7 +14,7 @@ pub fn from_config(plugins: Vec<Plugin>) -> Result<Vec<Box<dyn OutputPlugin>>, A
     let mut output_plugins: Vec<Box<dyn OutputPlugin>> = vec![];
     for plugin in plugins {
         let input = match plugin.name.as_str() {
-            "stdin" => StdoutPlugin::new(plugin.attributes),
+            "stdout" => StdoutPlugin::new(plugin.attributes),
             name @ _ => return Err(ApplicationError::PluginNotFound(name.to_string())),
         };
 
@@ -42,7 +42,7 @@ impl StdoutPlugin {
 impl OutputPlugin for StdoutPlugin {
     fn consume(&mut self, payload: &Payload) -> Result<(), ProcessError> {
         self.stdout.write_all(payload.data.as_bytes())?;
-
+        self.stdout.flush().unwrap(); //FIXME do not unwrap
         Ok(())
     }
 }

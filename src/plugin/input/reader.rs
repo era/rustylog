@@ -50,6 +50,7 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
 
         //TODO name should be configurable
         let mut id_gen = IdGen::new("todo".to_string());
+        let identifier = self.identifier();
 
         context.runtime.spawn(async move {
             loop {
@@ -60,6 +61,7 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
                                 tx.send(Payload {
                                     id: id_gen.next(),
                                     data,
+                                    plugin_id: identifier.clone(),
                             }).expect("err while trying to send message");
                             }
                             Ok(None) => {
@@ -84,16 +86,15 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
 
     /// commit does not do anything as we do not store what was send before
     /// or is there a way to repeat the inputs.
-    fn commit(&mut self, _: Context) -> Result<(), PluginError> {
+    fn commit(&mut self, _: Context, _: String) -> Result<(), PluginError> {
         Ok(())
     }
 
-    fn subscribe(&mut self, _: Context) -> Result<broadcast::Receiver<Payload>, PluginError> {
-        Ok(self
-            .sender
+    fn subscribe(&mut self, _: Context) -> broadcast::Receiver<Payload> {
+        self.sender
             .as_ref()
             .expect("can only call subscribe in a initiated plugin")
-            .subscribe())
+            .subscribe()
     }
 
     fn shutdown(&mut self, _: Context) -> Result<(), PluginError> {
@@ -101,6 +102,10 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
         // stop the operation. So nothing to do here.
         self.shutdown.take().and_then(|c| Some(c.send(())));
         Ok(())
+    }
+
+    fn identifier(&self) -> String {
+        "Stdin".to_string()
     }
 }
 

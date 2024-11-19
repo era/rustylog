@@ -17,8 +17,6 @@ struct Cli {
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    let mut app = plugin::from_config(cli.config).unwrap();
+    let app = plugin::from_config(cli.config).unwrap();
     app.start(Handle::current()).await.unwrap();
-
-    app.process().unwrap();
 }

@@ -14,11 +14,13 @@ pub trait InputPlugin {
     fn start(&mut self, context: Context) -> Result<broadcast::Receiver<Payload>, PluginError>;
     /// After the output, we need to `commit` the offset we already handled. So that if
     /// the process restarts, we know at which point should we retry operations.
-    fn commit(&mut self, context: Context) -> Result<(), PluginError>;
+    fn commit(&mut self, context: Context, id: String) -> Result<(), PluginError>;
     /// Return a `Producer` so filter can consume the inputs.
-    fn subscribe(&mut self, context: Context) -> Result<broadcast::Receiver<Payload>, PluginError>;
+    fn subscribe(&mut self, context: Context) -> broadcast::Receiver<Payload>;
     /// gracefully shutdown the plugin
     fn shutdown(&mut self, context: Context) -> Result<(), PluginError>;
+    /// identifier is a unique id, identifying the plugin type and instance
+    fn identifier(&self) -> String;
 }
 
 pub fn from_config(plugins: Vec<Plugin>) -> Result<Vec<Box<dyn InputPlugin>>, ApplicationError> {

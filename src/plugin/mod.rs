@@ -2,9 +2,10 @@ pub mod error;
 pub mod input;
 pub mod output;
 
+use futures::stream::{select_all, StreamExt};
 use output::OutputPlugin;
-use std::{fs::read_to_string, path::PathBuf};
-use tokio::runtime::Handle;
+use std::{collections::HashMap, fs::read_to_string, path::PathBuf};
+use tokio::{runtime::Handle, sync::broadcast, task::JoinSet};
 
 use error::ApplicationError;
 use input::InputPlugin;
@@ -21,10 +22,33 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn start(&mut self, handle: Handle) -> Result<(), ApplicationError> {
+    pub async fn start(mut self, handle: Handle) -> Result<(), ApplicationError> {
         let ctx = Context { runtime: handle };
 
-        Application::run_input(ctx, &mut self.input)?;
+        Application::run_input(ctx.clone(), &mut self.input)?;
+
+        let receivers = self.input.iter_mut().map(|i| i.subscribe(ctx.clone()));
+        let streams = receivers
+            .into_iter()
+            .map(tokio_stream::wrappers::BroadcastStream::new);
+        let mut sub = select_all(streams);
+
+        let mut input_plugins: HashMap<String, Box<dyn InputPlugin>> = self
+            .input
+            .into_iter()
+            .map(|i| (i.identifier(), i))
+            .collect();
+
+        while let Some(payload) = sub.next().await {
+            let payload = payload.unwrap(); // FIXME do not unwrap
+            let input = input_plugins
+                .get_mut(&payload.plugin_id)
+                .expect("plugin must exist in hashmap");
+            for out in self.output.iter_mut() {
+                out.as_mut().consume(&payload).unwrap(); // FIXME do not unwrap
+            }
+            input.as_mut().commit(ctx.clone(), payload.id).unwrap(); // FIXME do not unwrap
+        }
 
         Ok(())
     }
@@ -38,12 +62,6 @@ impl Application {
         }
 
         Ok(())
-    }
-
-    // starts a loop to processes all inputs sending them
-    // to the output plugins
-    pub fn process(mut self) -> Result<(), ApplicationError> {
-        todo!()
     }
 }
 
@@ -82,4 +100,5 @@ impl Context {
 pub struct Payload {
     pub id: String,
     pub data: String,
+    pub plugin_id: String,
 }
