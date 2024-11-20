@@ -5,18 +5,20 @@ use super::{
     Context, Payload,
 };
 use crate::config::Plugin;
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 
 /// InputPlugin receives messages and send them to the filters.
 pub trait InputPlugin {
     /// Called when the processes is starting, useful for plugins that receives input
     /// from TCP port, for example.
-    fn start(&mut self, context: Context) -> Result<broadcast::Receiver<Payload>, PluginError>;
+    fn start(
+        &mut self,
+        context: Context,
+        channel: mpsc::UnboundedSender<Payload>,
+    ) -> Result<(), PluginError>;
     /// After the output, we need to `commit` the offset we already handled. So that if
     /// the process restarts, we know at which point should we retry operations.
     fn commit(&mut self, context: Context, id: String) -> Result<(), PluginError>;
-    /// Return a `Producer` so filter can consume the inputs.
-    fn subscribe(&mut self, context: Context) -> broadcast::Receiver<Payload>;
     /// gracefully shutdown the plugin
     fn shutdown(&mut self, context: Context) -> Result<(), PluginError>;
     /// identifier is a unique id, identifying the plugin type and instance

@@ -5,7 +5,7 @@ pub mod output;
 use futures::stream::{select_all, StreamExt};
 use output::OutputPlugin;
 use std::{collections::HashMap, fs::read_to_string, path::PathBuf};
-use tokio::runtime::Handle;
+use tokio::{runtime::Handle, sync::mpsc};
 
 use error::ApplicationError;
 use input::InputPlugin;
@@ -25,13 +25,9 @@ impl Application {
     pub async fn start(mut self, handle: Handle) -> Result<(), ApplicationError> {
         let ctx = Context { runtime: handle };
 
-        Application::run_input(ctx.clone(), &mut self.input)?;
+        let (sender, mut receiver) = mpsc::unbounded_channel();
 
-        let receivers = self.input.iter_mut().map(|i| i.subscribe(ctx.clone()));
-        let streams = receivers
-            .into_iter()
-            .map(tokio_stream::wrappers::BroadcastStream::new);
-        let mut sub = select_all(streams);
+        Application::run_input(ctx.clone(), &mut self.input, sender)?;
 
         let mut input_plugins: HashMap<String, Box<dyn InputPlugin>> = self
             .input
@@ -39,8 +35,7 @@ impl Application {
             .map(|i| (i.identifier(), i))
             .collect();
 
-        while let Some(payload) = sub.next().await {
-            let payload = payload.unwrap(); // FIXME do not unwrap
+        while let Some(payload) = receiver.recv().await {
             let input = input_plugins
                 .get_mut(&payload.plugin_id)
                 .expect("plugin must exist in hashmap");
@@ -56,9 +51,10 @@ impl Application {
     fn run_input(
         ctx: Context,
         plugins: &mut Vec<Box<dyn InputPlugin>>,
+        sender: mpsc::UnboundedSender<Payload>,
     ) -> Result<(), ApplicationError> {
         for plugin in plugins {
-            plugin.start(ctx.clone())?;
+            plugin.start(ctx.clone(), sender.clone())?;
         }
 
         Ok(())

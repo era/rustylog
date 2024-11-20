@@ -3,7 +3,7 @@ use crate::plugin::Payload;
 use crate::plugin::{input::PluginError, Context, InputPlugin};
 use std::collections::HashMap;
 use tokio::io::{self, AsyncBufReadExt, AsyncRead, BufReader, Lines, Stdin};
-use tokio::sync::{broadcast, oneshot};
+use tokio::sync::{mpsc, oneshot};
 
 #[derive(Debug)]
 struct IdGen {
@@ -25,20 +25,21 @@ impl IdGen {
 pub struct ReaderPlugin<R: AsyncRead + Unpin + Send + 'static> {
     config: HashMap<String, config::AttributeValue>,
     shutdown: Option<oneshot::Sender<()>>,
-    sender: Option<broadcast::Sender<Payload>>,
     reader: Option<Lines<BufReader<R>>>,
 }
 
 impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
     /// start must be called with a reader in place, otherwise it will return
     /// `Err(PluginError::NotInitialized)`.
-    fn start(&mut self, context: Context) -> Result<broadcast::Receiver<Payload>, PluginError> {
+    fn start(
+        &mut self,
+        context: Context,
+        channel: mpsc::UnboundedSender<Payload>,
+    ) -> Result<(), PluginError> {
         let (cancel_tx, mut cancel_rx) = oneshot::channel::<()>();
         //TODO make the capacity configurable
-        let (tx, rx1) = broadcast::channel(100);
 
         self.shutdown = Some(cancel_tx);
-        self.sender = Some(tx.clone());
 
         let mut line_reader = if let Some(reader) = self.reader.take() {
             reader
@@ -58,7 +59,7 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
                     line = line_reader.next_line() => {
                         match line {
                             Ok(Some(data)) => {
-                                tx.send(Payload {
+                                channel.send(Payload {
                                     id: id_gen.next(),
                                     data,
                                     plugin_id: identifier.clone(),
@@ -81,20 +82,13 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
             }
         });
 
-        Ok(rx1)
+        Ok(())
     }
 
     /// commit does not do anything as we do not store what was send before
     /// or is there a way to repeat the inputs.
     fn commit(&mut self, _: Context, _: String) -> Result<(), PluginError> {
         Ok(())
-    }
-
-    fn subscribe(&mut self, _: Context) -> broadcast::Receiver<Payload> {
-        self.sender
-            .as_ref()
-            .expect("can only call subscribe in a initiated plugin")
-            .subscribe()
     }
 
     fn shutdown(&mut self, _: Context) -> Result<(), PluginError> {
@@ -126,7 +120,6 @@ impl StdinPlugin {
         let plugin = Self {
             config,
             shutdown: None,
-            sender: None,
             reader: Some(lines),
         };
         plugin
@@ -143,6 +136,8 @@ mod tests {
     async fn test_outputs_from_stdin() {
         let ctx = Context::new();
 
+        let (sender, mut receiver) = mpsc::unbounded_channel();
+
         let data = "This is a test\nWith multiple lines\n".as_bytes();
 
         let cursor = Cursor::new(data);
@@ -152,13 +147,13 @@ mod tests {
         let mut plugin = ReaderPlugin {
             config: HashMap::new(),
             shutdown: None,
-            sender: None,
             reader: Some(lines),
         };
-        let mut sub = plugin.start(ctx.clone()).unwrap();
 
-        assert_eq!("This is a test", sub.recv().await.unwrap().data);
-        assert_eq!("With multiple lines", sub.recv().await.unwrap().data);
+        plugin.start(ctx.clone(), sender).unwrap();
+
+        assert_eq!("This is a test", receiver.recv().await.unwrap().data);
+        assert_eq!("With multiple lines", receiver.recv().await.unwrap().data);
 
         plugin.shutdown(ctx.clone()).unwrap();
     }
