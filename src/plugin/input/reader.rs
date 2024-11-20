@@ -37,7 +37,6 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
         channel: mpsc::UnboundedSender<Payload>,
     ) -> Result<(), PluginError> {
         let (cancel_tx, mut cancel_rx) = oneshot::channel::<()>();
-        //TODO make the capacity configurable
 
         self.shutdown = Some(cancel_tx);
 
