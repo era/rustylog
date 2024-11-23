@@ -48,13 +48,7 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
             ));
         };
 
-        let plugin_name = self
-            .config
-            .get(&InputConfigOption::Name.to_string())
-            .map(|n| n.to_string())
-            .unwrap_or("ReaderPlugin".to_string());
-
-        let mut id_gen = IdGen::new(plugin_name);
+        let mut id_gen = IdGen::new(self.identifier());
         let identifier = self.identifier();
 
         context.runtime.spawn(async move {
@@ -103,9 +97,10 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
     }
 
     fn identifier(&self) -> String {
-        //FIXME should not hardcode this here
-        // since this is generic over the reader type
-        "Stdin".to_string()
+        self.config
+            .get(&InputConfigOption::Name.to_string())
+            .map(|n| n.to_string())
+            .unwrap_or("ReaderPlugin".to_string())
     }
 }
 
