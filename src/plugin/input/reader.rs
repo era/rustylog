@@ -116,12 +116,11 @@ impl StdinPlugin {
         let stdin = io::stdin();
         let reader = BufReader::new(stdin);
         let lines = reader.lines();
-        let plugin = Self {
+        Self {
             config,
             shutdown: None,
             reader: Some(lines),
-        };
-        plugin
+        }
     }
 }
 
