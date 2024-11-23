@@ -1,4 +1,4 @@
-use crate::config;
+use crate::config::{self, InputConfigOption};
 use crate::plugin::Payload;
 use crate::plugin::{input::PluginError, Context, InputPlugin};
 use std::collections::HashMap;
@@ -48,8 +48,13 @@ impl<R: AsyncRead + Unpin + Send + 'static> InputPlugin for ReaderPlugin<R> {
             ));
         };
 
-        //TODO name should be configurable
-        let mut id_gen = IdGen::new("todo".to_string());
+        let plugin_name = self
+            .config
+            .get(&InputConfigOption::Name.to_string())
+            .map(|n| n.to_string())
+            .unwrap_or("ReaderPlugin".to_string());
+
+        let mut id_gen = IdGen::new(plugin_name);
         let identifier = self.identifier();
 
         context.runtime.spawn(async move {
