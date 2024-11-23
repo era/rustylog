@@ -40,9 +40,9 @@ impl Application {
                 .get_mut(&payload.plugin_id)
                 .expect("plugin must exist in hashmap");
             for out in self.output.iter_mut() {
-                out.as_mut().consume(&payload).unwrap(); // FIXME do not unwrap
+                out.as_mut().consume(&payload)?;
             }
-            input.as_mut().commit(ctx.clone(), payload.id).unwrap(); // FIXME do not unwrap
+            input.as_mut().commit(ctx.clone(), payload.id)?;
         }
 
         Ok(())

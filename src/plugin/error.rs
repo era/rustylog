@@ -14,6 +14,9 @@ pub enum ApplicationError {
     #[error("Error on Plugin: {0}")]
     PluginError(#[from] PluginError),
 
+    #[error("Error while processing input: {0}")]
+    ProcessError(#[from] ProcessError),
+
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
 }
